@@ -6,42 +6,27 @@ import json
 import base64
 from PIL import Image
 import io
-import torch
 from model_handler import ModelHandler
 
 def init_context(context):
-    torch.autocast(device_type="cuda", dtype=torch.bfloat16).__enter__()
-    if torch.cuda.get_device_properties(0).major >= 8:
-        # turn on tfloat32 for Ampere GPUs (https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices)
-        torch.backends.cuda.matmul.allow_tf32 = True
-        torch.backends.cudnn.allow_tf32 = True
-
+    context.logger.info("Init context...  0%")
     model = ModelHandler()
     context.user_data.model = model
     context.logger.info("Init context...100%")
 
 def handler(context, event):
-    try:
-        context.logger.info("call handler")
-        data = event.body
-        buf = io.BytesIO(base64.b64decode(data["image"]))
-        image = Image.open(buf)
-        image = image.convert("RGB")  # to make sure image comes in RGB
+    context.logger.info("call handler")
+    data = event.body
+    buf = io.BytesIO(base64.b64decode(data["image"]))
+    image = Image.open(buf)
+    image = image.convert("RGB")  #  to make sure image comes in RGB
+    features = context.user_data.model.handle(image)
 
-        features = context.user_data.model.handle(image)
+    return context.Response(body=json.dumps({
+            'blob': base64.b64encode((features.cpu().numpy() if features.is_cuda else features.numpy())).decode(),
+        }),
+        headers={},
+        content_type='application/json',
+        status_code=200
+    )
 
-        return context.Response(body=json.dumps({
-                'blob': base64.b64encode((features.cpu().numpy() if features.is_cuda else features.numpy())).decode(),
-            }),
-            headers={},
-            content_type='application/json',
-            status_code=200
-        )
-    except Exception as e:
-        context.logger.error(f"Error in handler: {str(e)}")
-        return context.Response(
-            body=json.dumps({'error': str(e)}),
-            headers={},
-            content_type='application/json',
-            status_code=500
-        )
