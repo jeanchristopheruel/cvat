@@ -11,7 +11,7 @@ const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = (env) => {
     const defaultAppConfig = path.join(__dirname, 'src/config.tsx');
-    const defaultPlugins = ['plugins/sam'];
+    const defaultPlugins = ['plugins/sam', 'plugins/sam2'];
 
     const sourceMapsDisabled = (process.env.DISABLE_SOURCE_MAPS || 'false').toLocaleLowerCase() === 'true';
     const appConfigFile = process.env.UI_APP_CONFIG ? process.env.UI_APP_CONFIG : defaultAppConfig;
@@ -190,7 +190,7 @@ module.exports = (env) => {
                         to  : 'assets/opencv_4.8.0.js',
                     },
                     {
-                        from: 'plugins/**/assets/*.(onnx|js)',
+                        from: 'plugins/**/assets/*.(onnx|js|ort)',
                         to  : 'assets/[name][ext]',
                     }
                 ],
