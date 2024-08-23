@@ -14,7 +14,15 @@ class ModelHandler:
         self.model_cfg = "sam2_hiera_l.yaml"
         self.predictor = SAM2ImagePredictor(build_sam2(self.model_cfg, self.sam_checkpoint, device="cuda"))
 
-    def handle(self, image):
-        self.predictor.set_image(np.array(image))
-        features = self.predictor.get_image_embedding()
-        return features
+    def handle(self, image, pos_points, neg_points):
+        pos_points, neg_points = list(pos_points), list(neg_points)
+        with torch.inference_mode():
+            self.predictor.set_image(np.array(image))
+            masks, scores, logits = self.predictor.predict(
+                point_coords=np.array(pos_points + neg_points),
+                point_labels=np.array([1]*len(pos_points) + [0]*len(neg_points)),
+                multimask_output=True,
+            )
+            sorted_ind = np.argsort(scores)[::-1]
+            best_mask = masks[sorted_ind][0]
+            return best_mask
